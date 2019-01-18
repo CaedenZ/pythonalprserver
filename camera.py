@@ -8,6 +8,7 @@
 
 # In[21]:
 
+import configparser
 import datetime
 import os
 import queue
@@ -16,9 +17,6 @@ import threading
 import time
 
 import cv2
-import numpy as np
-import tensorflow as tf
-import configparser
 
 
 class camera:
@@ -42,7 +40,8 @@ class camera:
         self.stopped = False
 
     def get(self):
-        self.out = cv2.VideoWriter('/home/ubuntu/Documents/clip/' + str(int(time.time())) + '.avi', self.fourcc , self.fps, (1920,1080))
+        self.out = cv2.VideoWriter('/home/ubuntu/Documents/clip/' + str(
+            int(time.time())) + '.avi', self.fourcc, self.fps, (1920, 1080))
         self.start_time = time.time()
         while not self.stopped:
             if not self.grabbed:
@@ -52,9 +51,9 @@ class camera:
                 if((int(time.time()) - self.start_time) > self.capture_duration):
                     self.out.release()
                     self.start_time = time.time()
-                    self.out = cv2.VideoWriter('/home/ubuntu/Documents/clip/' + str(int(time.time())) + '.avi', self.fourcc , self.fps, (1920,1080))
+                    self.out = cv2.VideoWriter('/home/ubuntu/Documents/clip/' + str(
+                        int(time.time())) + '.avi', self.fourcc, self.fps, (1920, 1080))
                 self.out.write(self.frame)
-
 
     def stop(self):
         self.out.release
