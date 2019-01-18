@@ -11,7 +11,10 @@ import tensorflow as tf
 
 class analysis:
     def __init__(self, src=0):
+        
 
     def start(self):
 
     def stop(self):
+
+
