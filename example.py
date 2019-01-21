@@ -3,13 +3,13 @@ import os
 import sys
 import threading
 import time
-
 import cv2
 import numpy as np
 import pytesseract
 import tensorflow as tf
 from utils import label_map_util
 from utils import visualization_utils as vis_util
+
 
 class VideoDetect:
 
@@ -66,7 +66,8 @@ class VideoDetect:
         # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
 
         image_np_expanded = np.expand_dims(image_np, axis=0)
-        image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
+        image_tensor = self.detection_graph.get_tensor_by_name(
+            'image_tensor:0')
 
         # Each box represents a part of the image where a particular object was detected.
         boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
@@ -74,8 +75,10 @@ class VideoDetect:
         # Each score represent how level of confidence for each of the objects.
         # Score is shown on the result image, together with the class label.
         scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
-        classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
-        num_detections = self.detection_graph.get_tensor_by_name('num_detections:0')
+        classes = self.detection_graph.get_tensor_by_name(
+            'detection_classes:0')
+        num_detections = self.detection_graph.get_tensor_by_name(
+            'num_detections:0')
 
         # Actual detection.
         (boxes, scores, classes, num_detections) = self.sess.run(
