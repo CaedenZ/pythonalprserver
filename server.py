@@ -1,12 +1,14 @@
-import sys
-import io
-import cv2
 import base64
+import io
+import sys
+
+import cv2
 import numpy as np
+from flask import (Flask, Response, jsonify, make_response, render_template,
+                   request, send_file, send_from_directory)
+
 from camera import camera
-from flask import (Flask, Response, make_response, render_template, request,
-                   send_file, jsonify)
-from flask_cors import CORS,cross_origin
+from flask_cors import CORS, cross_origin
 
 sys.path.append("../")
 
@@ -17,6 +19,7 @@ app = Flask(__name__)
 cors = CORS(app, resources={r'/*': {"origins": '*'}})
 app.config['CORS_HEADER'] = 'Content-Type'
 threadDict = {}
+
 
 @app.route('/api/v1/newcamera/', methods=['POST'])
 @cross_origin(origin='*', headers=['Content-Type'])
@@ -31,6 +34,7 @@ def addcamera():
     response.headers.set('Content-Type', 'application/json')
     return response
 
+
 @app.route('/api/v1/getframe/', methods=['GET'])
 @cross_origin(origin='*', headers=['Content-Type'])
 def getframe():
@@ -42,6 +46,7 @@ def getframe():
     response = make_response(jsonify(returnData))
     response.headers.set('Content-Type', 'application/json')
     return response
+
 
 @app.route('/api/v1/removecamera/', methods=['DELETE'])
 @cross_origin(origin='*', headers=['Content-Type'])
@@ -55,6 +60,17 @@ def removecamera():
     response = make_response("you are stupid")
     response.headers.set('Content-Type', 'application/json')
     return response
+
+
+# @app.route('/api/v1/servestream/', methods=['GET'])
+# @cross_origin(origin='*', headers=['Content-Type'])
+# def livestream():
+#     return send_from_directory('/media/ubuntu/storagedrive/models-master/research/object_detection/Server/livestream', 'test.m3u8')
+
+@app.route('/api/v1/<identifier>/<file_name>', methods=['GET'])
+@cross_origin(origin='*', headers=['Content-Type'])
+def livestreamresponse(file_name, identifier):
+    return send_from_directory('/media/ubuntu/storagedrive/models-master/research/object_detection/Server/livestream', file_name, cache_timeout=-1)
 
 
 if __name__ == '__main__':
