@@ -1,26 +1,41 @@
+import configparser
 import datetime
 import os
 import queue
 import sys
 import threading
 import time
+from collections import deque
+
 import cv2
 import numpy as np
 import tensorflow as tf
-from collections import deque
+
+from helpers.counter import counter
+from helpers.enum_models import Model
 from utils import label_map_util
 from utils import visualization_utils as vis_util
-from helpers.enum_models import Model
+
+from mongo.mongodb import mongodb
 
 
 class analysis:
-    def __init__(self, model=Model.NONE):
+    def __init__(self, camera='tmp', model="", location="unkown"):
+        self.cameraName = camera
+        self.thresholdcheck = counter(75)
         self.outputFrames = deque()
         self.inputFrames = deque()
-        self.detectionmodel = model.value
+        self.write = False
+        self.detectionmodel = model
         self.stopped = False
+        self.location = location
+        self.mongo = mongodb()
+        config = configparser.ConfigParser()
+        config.read('server.ini')
+        modeldir = config['DEFAULT']['modeldir']
+        clipdir = config['DEFAULT']['clipdir']
         # What model to download.
-        MODEL_NAME = '/media/ubuntu/storagedrive/models-master/research/object_detection/model45'
+        MODEL_NAME = modeldir + self.detectionmodel
         # MODEL_NAME = '/home/ubuntu/Downloads/ssd_mobilenet_v2_coco_2018_03_29'
 
         # Path to frozen detection graph. This is the actual model that is used for the object detection.
@@ -28,12 +43,12 @@ class analysis:
 
         # List of the strings that is used to add correct label for each box.
         PATH_TO_LABELS = os.path.join(
-            '/media/ubuntu/storagedrive/models-master/research/object_detection/licenseplate/data', 'labelmap.pbtxt')
+            MODEL_NAME, 'labelmap.pbtxt')
 
         NUM_CLASSES = 1
 
         self.detection_graph = tf.Graph()
-        with detection_graph.as_default():
+        with self.detection_graph.as_default():
             od_graph_def = tf.GraphDef()
 
             with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
@@ -41,7 +56,7 @@ class analysis:
                 od_graph_def.ParseFromString(serialized_graph)
                 tf.import_graph_def(od_graph_def, name='')
 
-        self.sess = tf.Session(graph=detection_graph)
+        self.sess = tf.Session(graph=self.detection_graph)
 
         label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
         categories = label_map_util.convert_label_map_to_categories(
@@ -49,17 +64,75 @@ class analysis:
         self.category_index = label_map_util.create_category_index(categories)
 
     def start(self):
-        threading.Thread(target=self.get, args=()).start()
+        threading.Thread(target=self.analyse, args=()).start()
         return self
 
     def analyse(self):
         while not self.stopped:
             if(self.inputFrames):
-                self.outputFrames.append(self.detect_objects(self.inputFrames.popleft()))
+                print(len(self.inputFrames))
+                image, write = detect_objects(self.inputFrames.popleft())
 
     def stop(self):
+        try:
+            self.out.release()
+        except:
+            print('Video already released')
         self.stopped = True
         self.sess.close()
 
     def detect_objects(self, image_np):
-        #Do detection here
+        # Do detection here
+        image_np_expanded = np.expand_dims(image_np, axis=0)
+        image_tensor = self.detection_graph.get_tensor_by_name(
+            'image_tensor:0')
+
+        # Each box represents a part of the image where a particular object was detected.
+        boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
+
+        # Each score represent how level of confidence for each of the objects.
+        # Score is shown on the result image, together with the class label.
+        scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
+        classes = self.detection_graph.get_tensor_by_name(
+            'detection_classes:0')
+        num_detections = self.detection_graph.get_tensor_by_name(
+            'num_detections:0')
+
+        # Actual detection.
+        (boxes, scores, classes, num_detections) = self.sess.run(
+            [boxes, scores, classes, num_detections],
+            feed_dict={image_tensor: image_np_expanded})
+
+        # Visualization of the results of a detection.
+        vis_util.visualize_boxes_and_labels_on_image_array(
+            image_np,
+            np.squeeze(boxes),
+            np.squeeze(classes).astype(np.int32),
+            np.squeeze(scores),
+            self.category_index,
+            use_normalized_coordinates=True,
+            min_score_thresh=.7,
+            line_thickness=2)
+
+        if(num_detections[0] >= 1):
+            if(self.thresholdcheck.num == 0):
+                # Start a new video
+                dirPath = self.clipdir + self.cameraName + os.sep + self.detectionmodel
+                if not os.path.exists(dirPath):
+                    os.makedirs(dirPath)
+                filePath = dirPath + os.sep + str(int(time.time())) + '.avi'
+                self.out = cv2.VideoWriter(filePath, self.fourcc, self.fps, (1920, 1080))
+                log = {"file":filePath,"time":str(int(time.time())), "location" = self.location}
+                self.mongo.insertone(self.location,log)
+            self.out.write(image_np)
+            self.thresholdcheck.resettime()
+
+        else:
+            if (self.thresholdcheck.exceeded):
+                self.out.release()
+                self.thresholdcheck.reset()
+            else:
+                # Stops from falsely recording after finishing a recording
+                if(self.thresholdcheck.num != 0):
+                    self.thresholdcheck.count()
+                    self.out.write(image_np)

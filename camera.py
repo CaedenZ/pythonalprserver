@@ -18,9 +18,13 @@ import time
 
 import cv2
 
+from analysis import analysis
+from helpers.enum_models import Model
+
 
 class camera:
-    def __init__(self, src=0):
+    def __init__(self, src=0, moduleList=[1, 2], location=""):
+        self.moduleDict = {}
         self.IP = src
         self.stream = cv2.VideoCapture()
         self.stream.open("rtsp://" + src)
@@ -31,9 +35,18 @@ class camera:
         config.read('server.ini')
         self.capture_duration = int(config['DEFAULT']['capture_duration'])
         self.fps = int(config['DEFAULT']['fps'])
+        self.camModuleList = moduleList
+        self.location = location
 
     def start(self):
+        # Start the thread
         threading.Thread(target=self.get, args=()).start()
+        # Start all the modules
+        for module in self.moduleList:
+            myAnalyseThread = analysis(Model(module).name)
+            myAnalyseThread.start()
+            myAnalyseThread.inputFrames.append(self.frame)
+            self.moduleDict[Model(module).name] = myAnalyseThread
         return self
 
     def resume(self):
@@ -58,8 +71,12 @@ class camera:
     def stop(self):
         self.out.release
         self.stopped = True
+        for k in self.moduleDict:
+            moduleDict[k].stop()
 
     def destroy(self):
+        for k in self.moduleDict:
+            moduleDict[k].stop()
         self.out.release
         self.stopped = True
         self.stream.release

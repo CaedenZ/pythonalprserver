@@ -17,6 +17,7 @@ class threadedtimer:
         while not self.stopped:
             if(self.timeRan <= self.duration):
                 self.timeRan += 1
+                sleep(1)
             elif not self.exceeded:  # If we have not set self.exceeded to True yet
                 self.exceeded = True
 

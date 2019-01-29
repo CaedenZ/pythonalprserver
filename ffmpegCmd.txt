@@ -1,0 +1,1 @@
+ffmpeg -fflags nobuffer -rtsp_transport tcp -i rtsp://192.168.1.219 -c:v libx264 -preset fast -crf 22 -vf "scale=1280:-1,format=yuv420p" -flags +cgop -g 25 -hls_flags delete_segments /media/ubuntu/storagedrive/models-master/research/object_detection/Server/livestream/test.m3u8 
