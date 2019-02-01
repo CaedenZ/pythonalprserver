@@ -25,12 +25,26 @@ threadDict = {}
 @app.route('/api/v1/newcamera/', methods=['POST'])
 @cross_origin(origin='*', headers=['Content-Type'])
 def addcamera():
-    data = request.get_json()
-    print(data.get('ipAdd'))
-    IP = data.get('ipAdd')
-    cam = camera(IP)
-    cScheduler = cam_scheduler(cam, schedule_list)
-    threadDict[cam.IP] = cScheduler
+    data = request.get_json(force=True)
+    # print(data)
+    camDatainString = data.get('camera')
+    camData = json.loads(camDatainString)
+    IP = camData.get('camera_ip_address')
+    location_id = camData.get('location_id')
+    # print(camData.get('camera_ip_address'))
+    # IP = data.get('ipAdd')
+    moduleList = data.get('camModuleList')
+    moduleIDlist = []
+    for m in moduleList:
+        moduleIDlist.append(m.get('cameraModuleIdentity').get('moduleid'))
+    print(IP)
+    print(location_id)
+    print(moduleIDlist)
+    cam = camera(IP,moduleIDlist,location_id)
+    # print(cam)
+    cam.start()
+    # cScheduler = cam_scheduler(cam, schedule_list)
+    threadDict[cam.IP] = cam
 
     return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
 

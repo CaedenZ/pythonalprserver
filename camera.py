@@ -23,7 +23,8 @@ from helpers.enum_models import Model
 
 
 class camera:
-    def __init__(self, src=0, moduleList=[1, 2], location=""):
+    def __init__(self, src=0, moduleList=[1], location="yishun"):
+        print('init camera')
         self.moduleDict = {}
         self.IP = src
         self.stream = cv2.VideoCapture()
@@ -40,13 +41,17 @@ class camera:
 
     def start(self):
         # Start the thread
-        threading.Thread(target=self.get, args=()).start()
+        print('starting camera')
+
         # Start all the modules
-        for module in self.moduleList:
-            myAnalyseThread = analysis(Model(module).name)
+        for module in self.camModuleList:
+            myAnalyseThread = analysis('1',Model(module).name,'yishun')
             myAnalyseThread.start()
             myAnalyseThread.inputFrames.append(self.frame)
             self.moduleDict[Model(module).name] = myAnalyseThread
+            print(myAnalyseThread)
+
+        threading.Thread(target=self.get, args=()).start()
         return self
 
     def resume(self):
@@ -57,6 +62,10 @@ class camera:
             int(time.time())) + '.avi', self.fourcc, self.fps, (1920, 1080))
         self.start_time = time.time()
         while not self.stopped:
+            pushFrame = self.frame
+            for module in self.camModuleList:
+                tread = self.moduleDict.get(Model(module).name)
+                tread.inputFrames.append(pushFrame)
             if not self.grabbed:
                 self.stop()
             else:
@@ -65,7 +74,7 @@ class camera:
                     self.out.release()
                     self.start_time = time.time()
                     self.out = cv2.VideoWriter('/home/ubuntu/Documents/clip/' + str(
-                        int(time.time())) + '.avi', self.fourcc, self.fps, (1920, 1080))
+                        int(time.time())) + '.mp4', self.fourcc, self.fps, (1920, 1080))
                 self.out.write(self.frame)
 
     def stop(self):

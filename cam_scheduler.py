@@ -6,7 +6,7 @@ from camera import camera
 
 
 class cam_scheduler:
-    def __init__(self, cam, schedule_list):
+    def __init__(self, cam, schedule_list = []):
         self.camera = cam
         self.sch_list = schedule_list
         self.stopped = False

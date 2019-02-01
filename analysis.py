@@ -10,13 +10,11 @@ from collections import deque
 import cv2
 import numpy as np
 import tensorflow as tf
-
 from helpers.counter import counter
 from helpers.enum_models import Model
+from mongo.mongodb import mongodb
 from utils import label_map_util
 from utils import visualization_utils as vis_util
-
-from mongo.mongodb import mongodb
 
 
 class analysis:
@@ -28,15 +26,18 @@ class analysis:
         self.write = False
         self.detectionmodel = model
         self.stopped = False
+        self.fourcc = cv2.VideoWriter_fourcc(*'X264')
+
         self.location = location
         self.mongo = mongodb()
         config = configparser.ConfigParser()
         config.read('server.ini')
         modeldir = config['DEFAULT']['modeldir']
-        clipdir = config['DEFAULT']['clipdir']
+        self.clipdir = config['DEFAULT']['clipdir']
+        self.fps = int(config['DEFAULT']['fps'])
         # What model to download.
         MODEL_NAME = modeldir + self.detectionmodel
-        # MODEL_NAME = '/home/ubuntu/Downloads/ssd_mobilenet_v2_coco_2018_03_29'
+        # MODEL_NAME = '/home/ubuntu/Downloads/s                                    sd_mobilenet_v2_coco_2018_03_29'
 
         # Path to frozen detection graph. This is the actual model that is used for the object detection.
         PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
@@ -69,9 +70,11 @@ class analysis:
 
     def analyse(self):
         while not self.stopped:
-            if(self.inputFrames):
-                print(len(self.inputFrames))
-                image, write = detect_objects(self.inputFrames.popleft())
+            if self.inputFrames:
+                # print(len(self.inputFrames))
+                frame = self.inputFrames.popleft()
+                if frame is not None:
+                    self.detect_objects(frame)
 
     def stop(self):
         try:
@@ -81,8 +84,14 @@ class analysis:
         self.stopped = True
         self.sess.close()
 
+    def load_image_into_numpy_array(self, image):
+        (im_width, im_height) = image.size
+        return np.array(image.getdata()).reshape(
+            (im_height, im_width, 3)).astype(np.uint8)
+
     def detect_objects(self, image_np):
         # Do detection here
+        # image_np = self.load_image_into_numpy_array(image)
         image_np_expanded = np.expand_dims(image_np, axis=0)
         image_tensor = self.detection_graph.get_tensor_by_name(
             'image_tensor:0')
@@ -115,15 +124,18 @@ class analysis:
             line_thickness=2)
 
         if(num_detections[0] >= 1):
+            print('detected')
             if(self.thresholdcheck.num == 0):
                 # Start a new video
                 dirPath = self.clipdir + self.cameraName + os.sep + self.detectionmodel
                 if not os.path.exists(dirPath):
                     os.makedirs(dirPath)
-                filePath = dirPath + os.sep + str(int(time.time())) + '.avi'
-                self.out = cv2.VideoWriter(filePath, self.fourcc, self.fps, (1920, 1080))
-                log = {"file":filePath,"time":str(int(time.time())), "location" = self.location}
-                self.mongo.insertone(self.location,log)
+                filePath = dirPath + os.sep + str(int(time.time())) + '.mp4'
+                self.out = cv2.VideoWriter(
+                    filePath, self.fourcc, self.fps, (1920, 1080))
+                log = {"file": filePath, "time": str(
+                    int(time.time())), "location": self.location}
+                self.mongo.insertone("log", log)
             self.out.write(image_np)
             self.thresholdcheck.resettime()
 
