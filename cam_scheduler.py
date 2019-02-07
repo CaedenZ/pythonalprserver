@@ -1,6 +1,6 @@
 import threading
 import time
-from datetime import date
+import datetime
 
 from camera import camera
 
@@ -21,9 +21,14 @@ class cam_scheduler:
             # Check if today is scheduled
             for s in self.sch_list:
                 # 1 = Monday, 2 = Tues, etc.
-                if (date.today().isoweekday() == s.day):
-                    isScheduled = True
-                    break
+                if (datetime.date.today().isoweekday() == s.day):
+                    starttime = s.start_time
+                    endtime = s.end_time
+                    parsedstarttime = datetime.datetime.strptime(starttime, "%Y-%m-%dT%H:%M:%S.%fZ") + datetime.timedelta(hours=8)
+                    parsedendtime = datetime.datetime.strptime(endtime, "%Y-%m-%dT%H:%M:%S.%fZ") + datetime.timedelta(hours=8)
+                    if(datetime.date.today() >= parsedstarttime && datetime.date.today() <= parsedendtime):
+                        isScheduled = True
+                        break
                 else:
                     isScheduled = False
             if (isScheduled):
@@ -33,7 +38,7 @@ class cam_scheduler:
             else:
                 # If the camera is not scheduled to run, we want to stop it
                 self.camera.stop()
-            sleep(30)
+            sleep(600)
 
     def stop(self):
         self.stopped = True

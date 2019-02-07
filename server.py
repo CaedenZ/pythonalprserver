@@ -31,20 +31,34 @@ def addcamera():
     camData = json.loads(camDatainString)
     IP = camData.get('camera_ip_address')
     location_id = camData.get('location_id')
+
+
+    minx = camData.get('minx')
+    maxx = camData.get('maxx')
+    miny = camData.get('miny')
+    maxy = camData.get('maxy')
     # print(camData.get('camera_ip_address'))
     # IP = data.get('ipAdd')
     moduleList = data.get('camModuleList')
+    schedule_list = data.get('camSchedList')
     moduleIDlist = []
     for m in moduleList:
         moduleIDlist.append(m.get('cameraModuleIdentity').get('moduleid'))
     print(IP)
     print(location_id)
     print(moduleIDlist)
-    cam = camera(IP,moduleIDlist,location_id)
-    # print(cam)
+    IA = False
+    if(maxx != 0):
+        IA = True
+    cam = camera(IP,moduleIDlist,location_id,minx,maxx,miny,maxy,IA)
+    ######## activate without scheduler ########
     cam.start()
+    threadDict[IP] = cam
+
+    ######## activate with scheduler ########
     # cScheduler = cam_scheduler(cam, schedule_list)
-    threadDict[cam.IP] = cam
+    # cScheduler.start()
+    # threadDict[IP] = cScheduler
 
     return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
 

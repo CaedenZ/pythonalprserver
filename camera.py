@@ -23,7 +23,7 @@ from helpers.enum_models import Model
 
 
 class camera:
-    def __init__(self, src=0, moduleList=[1], location="yishun"):
+    def __init__(self, src=0, moduleList=[1], location="yishun",minx=0,maxx=0,miny=0,maxy=0,interestArea=False):
         print('init camera')
         self.moduleDict = {}
         self.IP = src
@@ -38,6 +38,11 @@ class camera:
         self.fps = int(config['DEFAULT']['fps'])
         self.camModuleList = moduleList
         self.location = location
+        self.minx = minx
+        self.miny = miny
+        self.maxx = maxx
+        self.maxy = maxy
+        self.IA = interestArea
 
     def start(self):
         # Start the thread
@@ -45,7 +50,7 @@ class camera:
 
         # Start all the modules
         for module in self.camModuleList:
-            myAnalyseThread = analysis('1',Model(module).name,'yishun')
+            myAnalyseThread = analysis(self.IP,Model(module).name,'yishun',self.minx,self.maxx,self.miny,self.maxy,self.IA)
             myAnalyseThread.start()
             myAnalyseThread.inputFrames.append(self.frame)
             self.moduleDict[Model(module).name] = myAnalyseThread
