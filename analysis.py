@@ -172,10 +172,8 @@ class analysis:
         else:
             if(num_detections[0] >= 1):
                 [h, w] = image_np.shape[:2]
-                write = False
                 for i in range(num_detections[0]):
                     box = boxes[0][i]
-                    i += 1
                     # Get the origin co-ordinates and the length and width till where the face extends
                     ymin, xmin, ymax, xmax = [ v for v in box ]
 
@@ -184,26 +182,22 @@ class analysis:
                     xm = int(xmax * w)
                     ym = int(ymax * h)
 
-                    if((x < self.xmax && xm > self.xmin) || )
-
-
-
-            if(num_detections[0] >= 1):
-                print('detected')
-                print(scores[0][0])
-                if(self.thresholdcheck.num == 0):
-                    # Start a new video
-                    dirPath = self.clipdir + self.cameraName + os.sep + self.detectionmodel
-                    if not os.path.exists(dirPath):
-                        os.makedirs(dirPath)
-                    filePath = dirPath + os.sep + str(int(time.time())) + '.mp4'
-                    self.out = cv2.VideoWriter(
-                        filePath, self.fourcc, self.fps, (1920, 1080))
-                    log = {"file": filePath, "time": str(
-                        int(time.time())), "location": self.location}
-                    self.mongo.insertone("log", log)
-                self.out.write(image_np)
-                self.thresholdcheck.resettime()
+                    if(x < self.xmax && xm > self.xmin && y < self.ymax && ym > self.ymin):
+                        print('detected')
+                        print(scores[0][0])
+                        if(self.thresholdcheck.num == 0):
+                            # Start a new video
+                            dirPath = self.clipdir + self.cameraName + os.sep + self.detectionmodel
+                            if not os.path.exists(dirPath):
+                                os.makedirs(dirPath)
+                            filePath = dirPath + os.sep + str(int(time.time())) + '.mp4'
+                            self.out = cv2.VideoWriter(
+                                filePath, self.fourcc, self.fps, (1920, 1080))
+                            log = {"file": filePath, "time": str(
+                                int(time.time())), "location": self.location}
+                            self.mongo.insertone("log", log)
+                        self.out.write(image_np)
+                        self.thresholdcheck.resettime()
 
             else:
                 if (self.thresholdcheck.exceeded):
